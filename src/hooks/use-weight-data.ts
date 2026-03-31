@@ -1,0 +1,91 @@
+"use client";
+
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { weightData, Person } from "@/data/weight-data";
+
+function parseMDY(d: string): Date {
+  const [m, day, y] = d.split("/").map(Number);
+  return new Date(y, m - 1, day);
+}
+
+/** Convert <input type="date"> value ("YYYY-MM-DD") → "M/D/YYYY" */
+export function formatDateInput(value: string): string {
+  const [y, m, d] = value.split("-").map(Number);
+  return `${m}/${d}/${y}`;
+}
+
+export function useWeightData() {
+  // Seed with static data so the page renders immediately on first paint,
+  // then replace with server data once fetched.
+  const [people, setPeople] = useState<Person[]>(weightData);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/entries");
+      if (res.ok) {
+        const { people: data } = await res.json();
+        setPeople(data);
+      }
+    } catch {
+      // Network error — keep current state
+    }
+  }, []);
+
+  // Load server data on mount
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  /** All unique session dates across all members, sorted chronologically */
+  const dates = useMemo<string[]>(() => {
+    const all = new Set(people.flatMap((p) => p.data.map((d) => d.date)));
+    return [...all].sort(
+      (a, b) => parseMDY(a).getTime() - parseMDY(b).getTime()
+    );
+  }, [people]);
+
+  /**
+   * Add or update a weight entry.
+   * Applies an optimistic update immediately, then syncs with the server.
+   * On failure, reverts by reloading server state.
+   */
+  async function addEntry(name: string, date: string, weight: number) {
+    const isNewDate = !dates.includes(date);
+
+    // Optimistic update
+    setPeople((prev) =>
+      prev.map((p) => {
+        let data = p.data;
+        if (isNewDate && !data.some((d) => d.date === date)) {
+          data = [...data, { date, weight: null }].sort(
+            (a, b) => parseMDY(a.date).getTime() - parseMDY(b.date).getTime()
+          );
+        }
+        if (p.name !== name) return { ...p, data };
+        return {
+          ...p,
+          data: data.map((d) => (d.date === date ? { ...d, weight } : d)),
+        };
+      })
+    );
+
+    // Persist to server
+    try {
+      const res = await fetch("/api/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, date, weight }),
+      });
+      if (res.ok) {
+        const { people: updated } = await res.json();
+        setPeople(updated);
+      } else {
+        await load(); // revert
+      }
+    } catch {
+      await load(); // revert on network error
+    }
+  }
+
+  return { people, dates, addEntry };
+}

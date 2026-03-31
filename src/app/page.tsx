@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { weightData } from "@/data/weight-data";
+import { useWeightData } from "@/hooks/use-weight-data";
 import { UserList } from "@/components/user-list";
 import { WeightChart } from "@/components/weight-chart";
-import { Activity } from "lucide-react";
+import { WeightEntryForm } from "@/components/weight-entry-form";
+import { EntriesTable } from "@/components/entries-table";
+import { Activity, Plus } from "lucide-react";
 
 export default function Home() {
-  const [selectedUser, setSelectedUser] = useState(weightData[0].name);
-  const person = weightData.find((p) => p.name === selectedUser) ?? weightData[0];
+  const { people, dates, addEntry } = useWeightData();
+  const [selectedUser, setSelectedUser] = useState(people[0].name);
+  const [showForm, setShowForm] = useState(false);
+
+  const person = people.find((p) => p.name === selectedUser) ?? people[0];
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,6 +34,14 @@ export default function Home() {
               year: "numeric",
             })}
           </time>
+          <button
+            onClick={() => setShowForm(true)}
+            aria-label="Add weight entry"
+            className="ml-3 flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium cursor-pointer hover:opacity-90 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            <Plus className="w-4 h-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Add Entry</span>
+          </button>
         </div>
       </header>
 
@@ -42,19 +55,31 @@ export default function Home() {
                 Members
               </p>
               <UserList
-                users={weightData}
+                users={people}
                 selectedUser={selectedUser}
                 onUserSelect={setSelectedUser}
               />
             </div>
           </aside>
 
-          {/* Chart panel */}
-          <section className="flex-1 min-w-0">
+          {/* Chart + entries panel */}
+          <section className="flex-1 min-w-0 space-y-5">
             <WeightChart person={person} />
+            <EntriesTable person={person} />
           </section>
         </div>
       </main>
+
+      {/* Add Entry modal */}
+      {showForm && (
+        <WeightEntryForm
+          people={people}
+          dates={dates}
+          initialPerson={selectedUser}
+          onAdd={addEntry}
+          onClose={() => setShowForm(false)}
+        />
+      )}
     </div>
   );
 }
