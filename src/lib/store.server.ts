@@ -164,3 +164,86 @@ export async function writeStore(store: Store): Promise<void> {
   }
 }
 
+export async function addMember(name: string): Promise<void> {
+  await ensureInit();
+  const conn = await getConn();
+  try {
+    await conn.run(
+      "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
+      { name }
+    );
+  } finally {
+    conn.closeSync();
+  }
+}
+
+export async function renameMember(oldName: string, newName: string): Promise<void> {
+  await ensureInit();
+  const conn = await getConn();
+  try {
+    // Insert new name first, then reassign entries, then delete old
+    await conn.run(
+      "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
+      { name: newName }
+    );
+    await conn.run(
+      "UPDATE entries SET member_name = $newName WHERE member_name = $oldName",
+      { newName, oldName }
+    );
+    await conn.run("DELETE FROM members WHERE name = $name", { name: oldName });
+  } finally {
+    conn.closeSync();
+  }
+}
+
+export async function deleteMember(name: string): Promise<void> {
+  await ensureInit();
+  const conn = await getConn();
+  try {
+    await conn.run("DELETE FROM entries WHERE member_name = $name", { name });
+    await conn.run("DELETE FROM members WHERE name = $name", { name });
+  } finally {
+    conn.closeSync();
+  }
+}
+
+export async function resetStore(): Promise<void> {
+  await ensureInit();
+  const conn = await getConn();
+  try {
+    await conn.run("DELETE FROM entries");
+    await conn.run("DELETE FROM members");
+  } finally {
+    conn.closeSync();
+  }
+}
+
+export async function importStore(people: Person[]): Promise<void> {
+  await ensureInit();
+  const conn = await getConn();
+  try {
+    await conn.run("DELETE FROM entries");
+    await conn.run("DELETE FROM members");
+    for (const person of people) {
+      await conn.run(
+        "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
+        { name: person.name }
+      );
+      for (const entry of person.data) {
+        await conn.run(
+          `INSERT INTO entries (member_name, session_date, weight)
+           VALUES ($member_name, $session_date, $weight)
+           ON CONFLICT DO NOTHING`,
+          {
+            member_name: person.name,
+            session_date: entry.date,
+            weight: entry.weight ?? null,
+          }
+        );
+      }
+    }
+  } finally {
+    conn.closeSync();
+  }
+}
+

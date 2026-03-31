@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 
 export interface WeightEntry {
   date: string;
@@ -25,6 +25,12 @@ export function formatDateInput(value: string): string {
 
 export function useWeightData(initialPeople: Person[] = []) {
   const [people, setPeople] = useState<Person[]>(initialPeople);
+
+  // Sync when server re-renders with fresh data (e.g. after router.refresh())
+  useEffect(() => {
+    setPeople(initialPeople);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(initialPeople)]);
 
   const load = useCallback(async () => {
     try {

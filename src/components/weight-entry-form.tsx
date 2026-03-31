@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, CheckCircle, CalendarPlus } from "lucide-react";
+import { X, CheckCircle, CalendarPlus, UserPlus } from "lucide-react";
 import { Person } from "@/hooks/use-weight-data";
 import { formatDateInput } from "@/hooks/use-weight-data";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,10 @@ export function WeightEntryForm({
   onAdd,
   onClose,
 }: WeightEntryFormProps) {
+  const [newMemberMode, setNewMemberMode] = useState(false);
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberError, setNewMemberError] = useState("");
+
   const [name, setName] = useState(initialPerson ?? people[0]?.name ?? "");
   const [date, setDate] = useState(dates[dates.length - 1] ?? "");
   const [newDateMode, setNewDateMode] = useState(false);
@@ -31,13 +35,11 @@ export function WeightEntryForm({
   const [success, setSuccess] = useState(false);
 
   const firstFieldRef = useRef<HTMLSelectElement>(null);
+  const newMemberRef = useRef<HTMLInputElement>(null);
   const newDateRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { firstFieldRef.current?.focus(); }, []);
-
-  useEffect(() => {
-    if (newDateMode) newDateRef.current?.focus();
-  }, [newDateMode]);
+  useEffect(() => { if (newMemberMode) newMemberRef.current?.focus(); }, [newMemberMode]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -49,15 +51,28 @@ export function WeightEntryForm({
 
   // Pre-fill existing weight when member/date changes (existing dates only)
   useEffect(() => {
-    if (newDateMode) { setWeight(""); return; }
+    if (newDateMode || newMemberMode) { setWeight(""); return; }
     const person = people.find((p) => p.name === name);
     const entry = person?.data.find((d) => d.date === date);
     setWeight(entry?.weight != null ? String(entry.weight) : "");
     setError("");
-  }, [name, date, newDateMode, people]);
+  }, [name, date, newDateMode, newMemberMode, people]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Resolve active member name
+    let activeName = name;
+    if (newMemberMode) {
+      const trimmed = newMemberName.trim().toUpperCase();
+      if (!trimmed) { setNewMemberError("Enter a member name."); return; }
+      if (people.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
+        setNewMemberError("A member with that name already exists.");
+        return;
+      }
+      activeName = trimmed;
+      setNewMemberError("");
+    }
 
     // Resolve the active date
     let activeDate = date;
@@ -82,7 +97,7 @@ export function WeightEntryForm({
     }
 
     setError("");
-    onAdd(name, activeDate, w);
+    onAdd(activeName, activeDate, w);
     setSuccess(true);
     setTimeout(() => { setSuccess(false); onClose(); }, 1200);
   }
@@ -133,25 +148,59 @@ export function WeightEntryForm({
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Member */}
             <div className="space-y-1.5">
-              <label
-                htmlFor="entry-member"
-                className="text-sm font-medium text-foreground"
-              >
-                Member
-              </label>
-              <select
-                id="entry-member"
-                ref={firstFieldRef}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer transition-colors duration-150"
-              >
-                {people.map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor={newMemberMode ? "entry-new-member" : "entry-member"}
+                  className="text-sm font-medium text-foreground"
+                >
+                  Member
+                </label>
+                <button
+                  type="button"
+                  onClick={() => { setNewMemberMode((v) => !v); setNewMemberError(""); }}
+                  className="flex items-center gap-1 text-xs text-primary hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-pressed={newMemberMode}
+                >
+                  <UserPlus className="w-3.5 h-3.5" aria-hidden="true" />
+                  {newMemberMode ? "Existing member" : "New member"}
+                </button>
+              </div>
+
+              {newMemberMode ? (
+                <>
+                  <input
+                    ref={newMemberRef}
+                    id="entry-new-member"
+                    type="text"
+                    placeholder="Member name"
+                    value={newMemberName}
+                    onChange={(e) => { setNewMemberName(e.target.value); setNewMemberError(""); }}
+                    aria-invalid={!!newMemberError}
+                    className={cn(
+                      "w-full h-11 rounded-lg border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground",
+                      "focus:outline-none focus:ring-2 transition-colors duration-150",
+                      newMemberError ? "border-destructive focus:ring-destructive" : "border-input focus:ring-ring"
+                    )}
+                  />
+                  {newMemberError && (
+                    <p role="alert" className="text-xs text-destructive">{newMemberError}</p>
+                  )}
+                </>
+              ) : (
+                <select
+                  id="entry-member"
+                  ref={firstFieldRef}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full h-11 rounded-lg border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer transition-colors duration-150"
+                >
+                  {people.map((p) => (
+                    <option key={p.name} value={p.name}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Session date */}

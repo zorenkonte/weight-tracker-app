@@ -8,6 +8,7 @@ import { UserList } from "@/components/user-list";
 import { WeightChart } from "@/components/weight-chart";
 import { WeightEntryForm } from "@/components/weight-entry-form";
 import { EntriesTable } from "@/components/entries-table";
+import { MemberProfileDialog } from "@/components/member-profile-dialog";
 import { Person } from "@/hooks/use-weight-data";
 import { Activity, Plus } from "lucide-react";
 
@@ -25,8 +26,17 @@ export function UserPageClient({ initialPeople }: { initialPeople: Person[] }) {
   }
 
   const [showForm, setShowForm] = useState(false);
+  const [editingMember, setEditingMember] = useState<{ name: string; index: number } | null>(null);
 
   const person = people.find((p) => p.name === selectedUser) ?? people[0];
+
+  function handleProfileSaved(oldName: string, newName: string) {
+    setEditingMember(null);
+    if (oldName !== newName) {
+      router.replace(`/${encodeURIComponent(newName.toLowerCase())}`);
+    }
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,6 +73,7 @@ export function UserPageClient({ initialPeople }: { initialPeople: Person[] }) {
                 users={people}
                 selectedUser={selectedUser}
                 onUserSelect={setSelectedUser}
+                onEditMember={(name, index) => setEditingMember({ name, index })}
               />
             </div>
           </aside>
@@ -85,6 +96,18 @@ export function UserPageClient({ initialPeople }: { initialPeople: Person[] }) {
           onClose={() => setShowForm(false)}
         />
       )}
+      {editingMember && (() => {
+        const editPerson = people.find((p) => p.name === editingMember.name);
+        return editPerson ? (
+          <MemberProfileDialog
+            person={editPerson}
+            defaultIndex={editingMember.index}
+            people={people}
+            onClose={() => setEditingMember(null)}
+            onSaved={handleProfileSaved}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }

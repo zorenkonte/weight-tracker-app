@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useWeightData } from "@/hooks/use-weight-data";
 import { WeightEntryForm } from "@/components/weight-entry-form";
-import { Activity, Plus, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { SettingsDialog } from "@/components/settings-dialog";
+import { Activity, Plus, TrendingUp, TrendingDown, Minus, Settings } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Person } from "@/hooks/use-weight-data";
@@ -106,6 +107,7 @@ export function DashboardClient({ initialPeople }: { initialPeople: Person[] }) 
   const { people, dates, addEntry } = useWeightData(initialPeople);
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,14 +118,23 @@ export function DashboardClient({ initialPeople }: { initialPeople: Person[] }) 
           <span className="text-base font-semibold text-foreground tracking-tight">
             Weight Tracker
           </span>
-          <button
-            onClick={() => setShowForm(true)}
-            aria-label="Add weight entry"
-            className="ml-auto flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium cursor-pointer hover:opacity-90 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          >
-            <Plus className="w-4 h-4" aria-hidden="true" />
-            <span className="hidden sm:inline">Add Entry</span>
-          </button>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => setShowSettings(true)}
+              aria-label="Settings"
+              className="flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Settings className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              aria-label="Add weight entry"
+              className="flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium cursor-pointer hover:opacity-90 active:scale-[0.97] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Plus className="w-4 h-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Add Entry</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -154,6 +165,13 @@ export function DashboardClient({ initialPeople }: { initialPeople: Person[] }) 
           dates={dates}
           onAdd={addEntry}
           onClose={() => setShowForm(false)}
+        />
+      )}
+      {showSettings && (
+        <SettingsDialog
+          onClose={() => setShowSettings(false)}
+          onImported={() => { setShowSettings(false); router.refresh(); }}
+          onReset={() => { setShowSettings(false); router.refresh(); }}
         />
       )}
     </div>
