@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, CheckCircle, CalendarPlus } from "lucide-react";
-import { Person } from "@/data/weight-data";
+import { Person } from "@/hooks/use-weight-data";
 import { formatDateInput } from "@/hooks/use-weight-data";
 import { cn } from "@/lib/utils";
 

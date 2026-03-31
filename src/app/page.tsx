@@ -6,7 +6,7 @@ import { WeightEntryForm } from "@/components/weight-entry-form";
 import { Activity, Plus, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Person } from "@/data/weight-data";
+import { Person } from "@/hooks/use-weight-data";
 
 const AVATAR_COLORS = [
   "bg-emerald-100 text-emerald-700",

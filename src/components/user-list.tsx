@@ -1,6 +1,6 @@
 "use client";
 
-import { Person } from "@/data/weight-data";
+import { Person } from "@/hooks/use-weight-data";
 import { cn } from "@/lib/utils";
 
 interface UserListProps {

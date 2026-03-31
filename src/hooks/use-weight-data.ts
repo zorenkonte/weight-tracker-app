@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { weightData, Person } from "@/data/weight-data";
+
+export interface WeightEntry {
+  date: string;
+  weight: number | null;
+}
+
+export interface Person {
+  name: string;
+  data: WeightEntry[];
+}
 
 function parseMDY(d: string): Date {
   const [m, day, y] = d.split("/").map(Number);
@@ -15,7 +24,7 @@ export function formatDateInput(value: string): string {
 }
 
 export function useWeightData() {
-  const [people, setPeople] = useState<Person[]>(weightData);
+  const [people, setPeople] = useState<Person[]>([]);
 
   const load = useCallback(async () => {
     try {

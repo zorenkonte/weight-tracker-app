@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { Person } from "@/data/weight-data";
+import { Person } from "@/hooks/use-weight-data";
 
 interface EntriesTableProps {
   person: Person;

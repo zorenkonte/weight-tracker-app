@@ -75,8 +75,8 @@ export default function UserPage() {
 
           {/* Chart + entries panel */}
           <section className="flex-1 min-w-0 space-y-5">
-            <WeightChart person={person} />
-            <EntriesTable person={person} />
+            {person && <WeightChart person={person} />}
+            {person && <EntriesTable person={person} />}
           </section>
         </div>
       </main>

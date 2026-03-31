@@ -2,7 +2,7 @@
 
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
 import { TrendingUp, TrendingDown, Minus, Scale, Hash } from "lucide-react";
-import { Person } from "@/data/weight-data";
+import { Person } from "@/hooks/use-weight-data";
 import {
   ChartContainer,
   ChartTooltip,
