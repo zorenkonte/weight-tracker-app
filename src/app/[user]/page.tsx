@@ -16,7 +16,7 @@ export default function UserPage() {
 
   const selectedUser =
     people.find((p) => p.name.toLowerCase() === params.user?.toLowerCase())
-      ?.name ?? people[0].name;
+      ?.name ?? people[0]?.name ?? "";
 
   function setSelectedUser(name: string) {
     router.push(`/${name.toLowerCase()}`, { scroll: false });

@@ -15,8 +15,6 @@ export function formatDateInput(value: string): string {
 }
 
 export function useWeightData() {
-  // Seed with static data so the page renders immediately on first paint,
-  // then replace with server data once fetched.
   const [people, setPeople] = useState<Person[]>(weightData);
 
   const load = useCallback(async () => {
