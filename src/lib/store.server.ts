@@ -80,7 +80,7 @@ export async function readStore(): Promise<Store> {
       SELECT m.name, e.session_date, e.weight
       FROM members m
       LEFT JOIN entries e ON m.name = e.member_name
-      ORDER BY m.name, e.session_date
+      ORDER BY m.rowid, e.session_date
     `);
     const rows = reader.getRowObjects() as Array<{
       name: string;
