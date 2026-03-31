@@ -44,8 +44,8 @@ export function WeightChart({ person }: WeightChartProps) {
   const hasData = chartData.length > 0;
 
   const weights = chartData.map((d) => d.weight as number);
-  const minWeight = Math.floor(Math.min(...weights) - 2);
-  const maxWeight = Math.ceil(Math.max(...weights) + 2);
+  const minWeight = weights.length > 0 ? Math.floor(Math.min(...weights) - 2) : 0;
+  const maxWeight = weights.length > 0 ? Math.ceil(Math.max(...weights) + 2) : 100;
 
   return (
     <Card className="w-full">
