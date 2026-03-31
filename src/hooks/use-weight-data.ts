@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 
 export interface WeightEntry {
   date: string;
@@ -23,8 +23,8 @@ export function formatDateInput(value: string): string {
   return `${m}/${d}/${y}`;
 }
 
-export function useWeightData() {
-  const [people, setPeople] = useState<Person[]>([]);
+export function useWeightData(initialPeople: Person[] = []) {
+  const [people, setPeople] = useState<Person[]>(initialPeople);
 
   const load = useCallback(async () => {
     try {
@@ -37,11 +37,6 @@ export function useWeightData() {
       // Network error — keep current state
     }
   }, []);
-
-  // Load server data on mount
-  useEffect(() => {
-    load();
-  }, [load]);
 
   /** All unique session dates across all members, sorted chronologically */
   const dates = useMemo<string[]>(() => {
