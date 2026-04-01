@@ -12,6 +12,7 @@ interface WeightEntry {
 
 interface Person {
   name: string;
+  id?: string | null;
   handle?: string | null;
   colorIndex?: number | null;
   data: WeightEntry[];
@@ -63,6 +64,14 @@ function ensureInit(): Promise<void> {
         // Add columns introduced after initial schema (idempotent)
         await conn.run("ALTER TABLE members ADD COLUMN IF NOT EXISTS color_index INTEGER");
         await conn.run("ALTER TABLE members ADD COLUMN IF NOT EXISTS handle TEXT");
+        await conn.run("ALTER TABLE members ADD COLUMN IF NOT EXISTS member_id TEXT");
+        // Backfill member_id for any existing rows that don't have one
+        const needIds = await conn.runAndReadAll("SELECT name FROM members WHERE member_id IS NULL");
+        const needIdsRows = needIds.getRowObjects() as Array<{ name: string }>;
+        const { randomUUID } = await import("crypto");
+        for (const row of needIdsRows) {
+          await conn.run("UPDATE members SET member_id = $id WHERE name = $name", { id: randomUUID(), name: row.name });
+        }
         await conn.run(`
           CREATE TABLE IF NOT EXISTS entries (
             member_name TEXT NOT NULL,
@@ -79,10 +88,11 @@ function ensureInit(): Promise<void> {
         );
         const rows = reader.getRowObjects() as Array<{ c: bigint | number }>;
         if (Number(rows[0].c) === 0) {
+          const { randomUUID: seedUUID } = await import("crypto");
           for (const person of SEED_DATA) {
             await conn.run(
-              "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
-              { name: person.name }
+              "INSERT INTO members (name, member_id) VALUES ($name, $member_id) ON CONFLICT DO NOTHING",
+              { name: person.name, member_id: seedUUID() }
             );
             for (const entry of person.data) {
               await conn.run(
@@ -111,13 +121,14 @@ export async function readStore(): Promise<Store> {
   const conn = await getConn();
   try {
     const reader = await conn.runAndReadAll(`
-      SELECT m.name, m.color_index, m.handle, e.session_date, e.weight
+      SELECT m.name, m.member_id, m.color_index, m.handle, e.session_date, e.weight
       FROM members m
       LEFT JOIN entries e ON m.name = e.member_name
       ORDER BY m.rowid, e.session_date
     `);
     const rows = reader.getRowObjects() as Array<{
       name: string;
+      member_id: string | null;
       color_index: number | null;
       handle: string | null;
       session_date: string | null;
@@ -129,6 +140,7 @@ export async function readStore(): Promise<Store> {
       if (!peopleMap.has(row.name)) {
         peopleMap.set(row.name, {
           name: row.name,
+          id: row.member_id ?? null,
           handle: row.handle ?? null,
           colorIndex: row.color_index !== undefined && row.color_index !== null ? Number(row.color_index) : null,
           data: [],
@@ -195,11 +207,12 @@ export async function saveMemberMeta(
 
 export async function addMember(name: string): Promise<void> {
   await ensureInit();
+  const { randomUUID } = await import("crypto");
   const conn = await getConn();
   try {
     await conn.run(
-      "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
-      { name }
+      "INSERT INTO members (name, member_id) VALUES ($name, $member_id) ON CONFLICT DO NOTHING",
+      { name, member_id: randomUUID() }
     );
   } finally {
     conn.closeSync();
@@ -257,10 +270,11 @@ export async function importStore(people: Person[]): Promise<void> {
   try {
     await conn.run("DELETE FROM entries");
     await conn.run("DELETE FROM members");
+    const { randomUUID: importUUID } = await import("crypto");
     for (const person of people) {
       await conn.run(
-        "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
-        { name: person.name }
+        "INSERT INTO members (name, member_id) VALUES ($name, $member_id) ON CONFLICT DO NOTHING",
+        { name: person.name, member_id: importUUID() }
       );
       for (const entry of person.data) {
         await conn.run(

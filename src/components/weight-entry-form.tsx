@@ -28,7 +28,7 @@ export function WeightEntryForm({
   const [name, setName] = useState(initialPerson ?? people[0]?.name ?? "");
   const [date, setDate] = useState(dates[dates.length - 1] ?? "");
   const [newDateMode, setNewDateMode] = useState(false);
-  const [newDateValue, setNewDateValue] = useState(""); // YYYY-MM-DD from input
+  const [newDateValue, setNewDateValue] = useState<string>(""); // YYYY-MM-DD from input, empty = today on save
   const [weight, setWeight] = useState("");
   const [error, setError] = useState("");
   const [dateError, setDateError] = useState("");
@@ -77,8 +77,8 @@ export function WeightEntryForm({
     // Resolve the active date
     let activeDate = date;
     if (newDateMode) {
-      if (!newDateValue) { setDateError("Pick a date."); return; }
-      activeDate = formatDateInput(newDateValue);
+      const resolvedDate = newDateValue || new Date().toISOString().slice(0, 10);
+      activeDate = formatDateInput(resolvedDate);
       if (dates.includes(activeDate)) {
         setDateError("That session date already exists. Select it from the list.");
         return;

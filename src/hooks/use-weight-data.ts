@@ -9,9 +9,16 @@ export interface WeightEntry {
 
 export interface Person {
   name: string;
+  id?: string | null;
   handle?: string | null;
   colorIndex?: number | null;
   data: WeightEntry[];
+}
+
+/** Returns the URL slug for a member: their id, or name as fallback */
+export function memberSlug(person: Person): string {
+  if (person.handle) return person.handle;
+  return person.id ?? encodeURIComponent(person.name.toLowerCase());
 }
 
 function parseMDY(d: string): Date {

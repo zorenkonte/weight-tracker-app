@@ -3,6 +3,7 @@ import { importStore, readStore } from "@/lib/store.server";
 
 interface Person {
   name: string;
+  id?: string | null;
   handle?: string | null;
   colorIndex?: number | null;
   data: Array<{ date: string; weight: number | null }>;
