@@ -9,6 +9,8 @@ export interface WeightEntry {
 
 export interface Person {
   name: string;
+  handle?: string | null;
+  colorIndex?: number | null;
   data: WeightEntry[];
 }
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { Person } from "@/hooks/use-weight-data";
 import { cn } from "@/lib/utils";
@@ -14,18 +13,13 @@ interface UserListProps {
 }
 
 export function UserList({ users, selectedUser, onUserSelect, onEditMember }: UserListProps) {
-  // Re-render after hydration so localStorage colors are picked up
-  const [, forceRender] = useState(0);
-  useEffect(() => { forceRender(1); }, []);
-
   return (
     <div className="flex flex-col gap-0.5">
       {users.map((user, i) => {
         const hasData = user.data.some((d) => d.weight !== null);
         const isSelected = selectedUser === user.name;
         const initials = user.name.slice(0, 2);
-        const color = getAvatarColor(user.name, i);
-        const avatarColor = `${color.bg} ${color.text}`;
+        const color = getAvatarColor(user.colorIndex, i);
 
         return (
           <div key={user.name} className="group relative flex items-center">
@@ -44,14 +38,26 @@ export function UserList({ users, selectedUser, onUserSelect, onEditMember }: Us
             >
               <span
                 aria-hidden="true"
-                className={cn(
-                  "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold",
-                  isSelected ? "bg-white/20 text-primary-foreground" : avatarColor
-                )}
+                className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                style={
+                  isSelected
+                    ? { backgroundColor: "rgba(255,255,255,0.2)", color: "inherit" }
+                    : { backgroundColor: color.hex, color: color.textHex }
+                }
               >
                 {initials}
               </span>
-              <span className="truncate">{user.name}</span>
+              <span className="min-w-0">
+                <span className="block truncate">{user.name}</span>
+                {user.handle && (
+                  <span className={cn(
+                    "block truncate text-[11px] leading-tight",
+                    isSelected ? "text-primary-foreground/80" : "text-muted-foreground"
+                  )}>
+                    @{user.handle}
+                  </span>
+                )}
+              </span>
             </button>
 
             {onEditMember && (

@@ -12,6 +12,8 @@ interface WeightEntry {
 
 interface Person {
   name: string;
+  handle?: string | null;
+  colorIndex?: number | null;
   data: WeightEntry[];
 }
 
@@ -58,6 +60,9 @@ function ensureInit(): Promise<void> {
         await conn.run(
           `CREATE TABLE IF NOT EXISTS members (name TEXT PRIMARY KEY)`
         );
+        // Add columns introduced after initial schema (idempotent)
+        await conn.run("ALTER TABLE members ADD COLUMN IF NOT EXISTS color_index INTEGER");
+        await conn.run("ALTER TABLE members ADD COLUMN IF NOT EXISTS handle TEXT");
         await conn.run(`
           CREATE TABLE IF NOT EXISTS entries (
             member_name TEXT NOT NULL,
@@ -106,13 +111,15 @@ export async function readStore(): Promise<Store> {
   const conn = await getConn();
   try {
     const reader = await conn.runAndReadAll(`
-      SELECT m.name, e.session_date, e.weight
+      SELECT m.name, m.color_index, m.handle, e.session_date, e.weight
       FROM members m
       LEFT JOIN entries e ON m.name = e.member_name
       ORDER BY m.rowid, e.session_date
     `);
     const rows = reader.getRowObjects() as Array<{
       name: string;
+      color_index: number | null;
+      handle: string | null;
       session_date: string | null;
       weight: number | null;
     }>;
@@ -120,7 +127,12 @@ export async function readStore(): Promise<Store> {
     const peopleMap = new Map<string, Person>();
     for (const row of rows) {
       if (!peopleMap.has(row.name)) {
-        peopleMap.set(row.name, { name: row.name, data: [] });
+        peopleMap.set(row.name, {
+          name: row.name,
+          handle: row.handle ?? null,
+          colorIndex: row.color_index !== undefined && row.color_index !== null ? Number(row.color_index) : null,
+          data: [],
+        });
       }
       if (row.session_date !== null) {
         peopleMap.get(row.name)!.data.push({
@@ -164,6 +176,23 @@ export async function writeStore(store: Store): Promise<void> {
   }
 }
 
+export async function saveMemberMeta(
+  name: string,
+  colorIndex: number | null,
+  handle: string | null
+): Promise<void> {
+  await ensureInit();
+  const conn = await getConn();
+  try {
+    await conn.run(
+      "UPDATE members SET color_index = $colorIndex, handle = $handle WHERE name = $name",
+      { colorIndex: colorIndex ?? null, handle: handle ?? null, name }
+    );
+  } finally {
+    conn.closeSync();
+  }
+}
+
 export async function addMember(name: string): Promise<void> {
   await ensureInit();
   const conn = await getConn();
@@ -181,10 +210,14 @@ export async function renameMember(oldName: string, newName: string): Promise<vo
   await ensureInit();
   const conn = await getConn();
   try {
-    // Insert new name first, then reassign entries, then delete old
+    // Insert new name with existing metadata, then reassign entries, then delete old
     await conn.run(
-      "INSERT INTO members (name) VALUES ($name) ON CONFLICT DO NOTHING",
-      { name: newName }
+      `INSERT INTO members (name, color_index, handle)
+       SELECT $newName, color_index, handle
+       FROM members
+       WHERE name = $oldName
+       ON CONFLICT DO NOTHING`,
+      { newName, oldName }
     );
     await conn.run(
       "UPDATE entries SET member_name = $newName WHERE member_name = $oldName",

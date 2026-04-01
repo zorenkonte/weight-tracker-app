@@ -4,16 +4,11 @@ import { useState } from "react";
 import { X, Camera } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Person } from "@/hooks/use-weight-data";
-import {
-  AVATAR_PALETTE,
-  getSavedColorIndex,
-  saveColorIndex,
-  renameColorKey,
-} from "@/lib/avatar-store";
+import { AVATAR_PALETTE, getAvatarColor } from "@/lib/avatar-store";
 
 interface MemberProfileDialogProps {
   person: Person;
-  defaultIndex: number; // positional index in list
+  defaultIndex: number;
   people: Person[];
   onClose: () => void;
   onSaved: (oldName: string, newName: string) => void;
@@ -26,21 +21,27 @@ export function MemberProfileDialog({
   onClose,
   onSaved,
 }: MemberProfileDialogProps) {
-  const savedIdx = getSavedColorIndex(person.name);
   const [selectedColor, setSelectedColor] = useState(
-    savedIdx ?? (defaultIndex % AVATAR_PALETTE.length)
+    person.colorIndex ?? (defaultIndex % AVATAR_PALETTE.length)
   );
   const [nameValue, setNameValue] = useState(person.name);
+  const [handleValue, setHandleValue] = useState(person.handle ?? "");
   const [nameError, setNameError] = useState("");
+  const [handleError, setHandleError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const color = AVATAR_PALETTE[selectedColor];
+  const color = getAvatarColor(selectedColor, defaultIndex);
   const initials = nameValue.trim().slice(0, 2).toUpperCase() || person.name.slice(0, 2);
 
   async function handleSave() {
     const newName = nameValue.trim().toUpperCase();
+    const newHandle = handleValue.trim().toLowerCase().replace(/[^a-z0-9_]/g, "") || null;
 
-    if (!newName) { setNameError("Name cannot be empty."); return; }
+    if (!newName) {
+      setNameError("Name cannot be empty.");
+      return;
+    }
+
     if (
       newName !== person.name &&
       people.some((p) => p.name.toLowerCase() === newName.toLowerCase())
@@ -49,24 +50,27 @@ export function MemberProfileDialog({
       return;
     }
 
+    if (
+      newHandle &&
+      newHandle !== (person.handle ?? "").toLowerCase() &&
+      people.some((p) => p.handle?.toLowerCase() === newHandle)
+    ) {
+      setHandleError("That handle is already taken.");
+      return;
+    }
+
     setSaving(true);
 
-    // Save color locally
-    saveColorIndex(newName, selectedColor);
+    const res = await fetch(`/api/members/${encodeURIComponent(person.name)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName, colorIndex: selectedColor, handle: newHandle }),
+    });
 
-    // Rename on server if name changed
-    if (newName !== person.name) {
-      renameColorKey(person.name, newName);
-      const res = await fetch(`/api/members/${encodeURIComponent(person.name)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
-      });
-      if (!res.ok) {
-        setNameError("Rename failed. Try again.");
-        setSaving(false);
-        return;
-      }
+    if (!res.ok) {
+      setNameError("Save failed. Try again.");
+      setSaving(false);
+      return;
     }
 
     onSaved(person.name, newName);
@@ -85,7 +89,6 @@ export function MemberProfileDialog({
         aria-hidden="true"
       />
       <div className="relative w-full max-w-sm rounded-2xl bg-card border border-border shadow-xl p-6 space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-200">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <h2 id="profile-dialog-title" className="text-base font-bold text-foreground">
             Edit Profile
@@ -99,19 +102,14 @@ export function MemberProfileDialog({
           </button>
         </div>
 
-        {/* Avatar */}
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
             <div
-              className={cn(
-                "w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold transition-colors duration-150",
-                color.bg,
-                color.text
-              )}
+              className="w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold transition-colors duration-150"
+              style={{ backgroundColor: color.hex, color: color.textHex }}
             >
               {initials}
             </div>
-            {/* Photo upload placeholder */}
             <button
               type="button"
               disabled
@@ -124,7 +122,6 @@ export function MemberProfileDialog({
           <p className="text-xs text-muted-foreground">Profile photo coming soon</p>
         </div>
 
-        {/* Color picker */}
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-foreground">Avatar Color</p>
           <div className="flex flex-wrap gap-2">
@@ -148,7 +145,6 @@ export function MemberProfileDialog({
           </div>
         </div>
 
-        {/* Name */}
         <div className="space-y-1.5">
           <label htmlFor="profile-name" className="text-xs font-medium text-foreground">
             Name
@@ -157,7 +153,10 @@ export function MemberProfileDialog({
             id="profile-name"
             type="text"
             value={nameValue}
-            onChange={(e) => { setNameValue(e.target.value.toUpperCase()); setNameError(""); }}
+            onChange={(e) => {
+              setNameValue(e.target.value.toUpperCase());
+              setNameError("");
+            }}
             className={cn(
               "w-full h-10 rounded-lg border bg-background px-3 text-sm font-medium text-foreground",
               "focus:outline-none focus:ring-2 transition-colors",
@@ -167,7 +166,31 @@ export function MemberProfileDialog({
           {nameError && <p role="alert" className="text-xs text-destructive">{nameError}</p>}
         </div>
 
-        {/* Actions */}
+        <div className="space-y-1.5">
+          <label htmlFor="profile-handle" className="text-xs font-medium text-foreground">
+            Handle
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none">@</span>
+            <input
+              id="profile-handle"
+              type="text"
+              value={handleValue}
+              onChange={(e) => {
+                setHandleValue(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""));
+                setHandleError("");
+              }}
+              placeholder="optional"
+              className={cn(
+                "w-full h-10 rounded-lg border bg-background pl-7 pr-3 text-sm text-foreground",
+                "focus:outline-none focus:ring-2 transition-colors",
+                handleError ? "border-destructive focus:ring-destructive" : "border-input focus:ring-ring"
+              )}
+            />
+          </div>
+          {handleError && <p role="alert" className="text-xs text-destructive">{handleError}</p>}
+        </div>
+
         <div className="flex gap-2 pt-1">
           <button
             onClick={onClose}
@@ -180,7 +203,7 @@ export function MemberProfileDialog({
             disabled={saving}
             className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold cursor-pointer hover:opacity-90 disabled:opacity-60 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving..." : "Save"}
           </button>
         </div>
       </div>

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { importStore, readStore } from "@/lib/store.server";
-import { Person } from "@/hooks/use-weight-data";
+
+interface Person {
+  name: string;
+  handle?: string | null;
+  colorIndex?: number | null;
+  data: Array<{ date: string; weight: number | null }>;
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);

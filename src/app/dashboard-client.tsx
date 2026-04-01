@@ -8,26 +8,18 @@ import { Activity, Plus, TrendingUp, TrendingDown, Minus, Settings } from "lucid
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Person } from "@/hooks/use-weight-data";
-
-const AVATAR_COLORS = [
-  "bg-emerald-100 text-emerald-700",
-  "bg-sky-100 text-sky-700",
-  "bg-violet-100 text-violet-700",
-  "bg-amber-100 text-amber-700",
-  "bg-rose-100 text-rose-500",
-  "bg-teal-100 text-teal-700",
-  "bg-orange-100 text-orange-700",
-];
+import { getAvatarColor } from "@/lib/avatar-store";
 
 function MemberCard({
   person,
-  colorClass,
+  index,
   onClick,
 }: {
   person: Person;
-  colorClass: string;
+  index: number;
   onClick: () => void;
 }) {
+  const color = getAvatarColor(person.colorIndex, index);
   const recorded = person.data.filter((d) => d.weight !== null);
   const latest = recorded[recorded.length - 1] ?? null;
   const first = recorded[0] ?? null;
@@ -50,10 +42,8 @@ function MemberCard({
     >
       <div className="flex items-center gap-3">
         <span
-          className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
-            colorClass
-          )}
+          className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+          style={{ backgroundColor: color.hex, color: color.textHex }}
           aria-hidden="true"
         >
           {person.name.slice(0, 2)}
@@ -152,7 +142,7 @@ export function DashboardClient({ initialPeople }: { initialPeople: Person[] }) 
             <MemberCard
               key={person.name}
               person={person}
-              colorClass={AVATAR_COLORS[i % AVATAR_COLORS.length]}
+              index={i}
               onClick={() => router.push(`/${encodeURIComponent(person.name.toLowerCase())}`)}
             />
           ))}

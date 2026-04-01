@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readStore, writeStore } from "@/lib/store.server";
-import { WeightEntry } from "@/hooks/use-weight-data";
+
+interface WeightEntry {
+  date: string;
+  weight: number | null;
+}
 
 function parseMDY(d: string): Date {
   const [m, day, y] = d.split("/").map(Number);
